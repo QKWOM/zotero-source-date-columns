@@ -7,7 +7,7 @@
 
 ## 安装
 
-1. Zotero → 工具 → 插件 → 齿轮 → 从文件安装，选择本文件夹中的 `source-date-columns-1.5.3.xpi`。已安装旧版本时直接覆盖安装即可升级。
+1. Zotero → 工具 → 插件 → 齿轮 → 从文件安装，选择 `xpi/` 文件夹中的 `source-date-columns-1.5.3.xpi`（最新版）。已安装旧版本时直接覆盖安装即可升级。`xpi/` 里也保留了 1.0.0 以来的所有旧版本安装包。
 2. 在条目列表标题上右键，勾选“出处”和“日期”（可选勾选“已读”），并拖到合适的位置，例如“创建者”后面。
 
 插件没有自动更新服务。清单中的 `https://source-date-columns.invalid/updates.json` 只是 Zotero 安装校验要求的占位地址，升级需要手动安装新的 XPI。
@@ -124,7 +124,7 @@ PDF 附件和笔记本身不查询，请在带有标题、作者或标识符的�
   - `source-date-columns.js`：三列、右键和工具菜单、已读标签、行样式、阅读器按钮。
   - `online.js`：网络查询、匹配规则、缓存和请求队列。
 - **测试**：运行 `node tests/source-date-columns.test.js` 和 `node tests/online.test.js`。
-- **打包**：XPI 根目录只包含 `manifest.json`、`bootstrap.js`、`source-date-columns.js`、`online.js`、`README.md`、`LICENSE`。
+- **打包**：在仓库根目录运行 `zip -X -q xpi/source-date-columns-<版本号>.xpi manifest.json bootstrap.js source-date-columns.js online.js README.md LICENSE`，安装包统一放在 `xpi/` 文件夹。XPI 根目录只包含这 6 个文件。
 - **Zotero 接口**：依据本机 Zotero 9.0.6 自带的 `ItemTreeManager`、`MenuManager` 和 `Zotero.Reader.registerEventListener('renderToolbar')`。
 - **实现细节**：
   - Zotero 会把插件传入的回调函数再包一层，所以列的 `renderCell` 中拿不到 `this`，要通过 `ZoteroPane.itemsView` 按行号找到条目。
