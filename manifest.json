@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "论文出处与日期",
-  "version": "1.5.3",
+  "version": "1.6.0",
   "description": "联网匹配论文正式出处和发表年月，支持 Crossref、arXiv、OpenReview 与本地缓存；可标记已读并以浅蓝色显示。",
   "author": "QKWOM",
   "applications": {
@@ -9,7 +9,7 @@
       "id": "source-date-columns@local.zotero",
       "update_url": "https://source-date-columns.invalid/updates.json",
       "strict_min_version": "9.0",
-      "strict_max_version": "9.0.*"
+      "strict_max_version": "10.*"
     }
   }
 }

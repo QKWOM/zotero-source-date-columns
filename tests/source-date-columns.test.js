@@ -172,6 +172,22 @@ async function testColumnLifecycle() {
 	assert.match(readCSS, /\.row:has\(\.source-date-read\):not\(\.selected\)/);
 	assert.match(readCSS, /#4072e5\) 16%/, 'light theme tint');
 	assert.match(readCSS, /prefers-color-scheme: dark\)[\s\S]*#4072e5\) 35%/, 'stronger dark theme tint');
+	// The read-row rule must out-rank Zotero 10's striped-row rule, or odd rows stay gray.
+	const specificity = selector => [(selector.match(/#[\w-]+/g) || []).length, (selector.match(/\.[\w-]+/g) || []).length];
+	const readSelector = readCSS.slice(0, readCSS.indexOf('{')).trim();
+	const zotero10Stripe = '#zotero-items-tree .virtualized-table .row.odd:not(.selected):not(.library-header-row):not(.spacer-row)';
+	assert.equal(specificity(readSelector)[0], specificity(zotero10Stripe)[0]);
+	assert.ok(specificity(readSelector)[1] > specificity(zotero10Stripe)[1],
+		`read row ${specificity(readSelector)} must beat stripe ${specificity(zotero10Stripe)}`);
+	assert.doesNotMatch(readCSS, /!important/, "Zotero's !important drop/highlight colors must still win");
+
+	// Zotero 10 rows can hold collections, searches and library headers instead of items.
+	for (const ref of [{ id: 7, name: 'A collection in the trash' }, { libraryID: 1, name: 'My Library' }]) {
+		for (const column of registered) assert.equal(column.dataProvider(ref), '', column.label);
+		assert.deepEqual({ ...addon._test.display(ref) }, { source: '', date: '' }, 'no lookup is queued');
+		assert.equal(addon._test.isRead(ref), false);
+		assert.equal(addon._test.readTargets([ref]).length, 0, 'cannot be marked read');
+	}
 	assert.equal(registered[0].pluginID, "source-date-columns@local.zotero");
 	assert.equal(registered[0].dataProvider(item({ publicationTitle: "Nature" })), "Nature");
 	assert.equal(registered[1].dataProvider(item({ date: "2026-09-23" })), "2026-09");
@@ -212,6 +228,8 @@ async function testColumnLifecycle() {
 	assert.equal(cell([readPaper, pdf, other], 1).classList.has('source-date-read'), false, 'child rows are not shaded');
 	assert.equal(cell([readPaper, pdf, other], 2).classList.has('source-date-read'), false);
 	assert.equal(cell([readPaper], 0).textContent, 'x');
+	assert.equal(cell([{ libraryID: 1, name: 'My Library' }], 0).classList.has('source-date-read'), false,
+		'library header rows are not shaded');
 	await setRead([pdf], false); assert.equal(isRead(readPaper), false);
 
 	// Reader toolbar: the button goes after the color picker in the annotation tools.

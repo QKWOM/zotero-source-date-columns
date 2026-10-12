@@ -63,14 +63,10 @@ var SourceDateColumns = (() => {
 		return "";
 	}
 
+	// Item tree rows can also hold collections, searches and (Zotero 10) library
+	// headers; those objects have no isRegularItem() and must not be looked up.
 	function isRegularItem(item) {
-		if (!item) {
-			return false;
-		}
-		if (typeof item.isRegularItem === "function") {
-			return item.isRegularItem();
-		}
-		return true;
+		return !!item && typeof item.isRegularItem === "function" && item.isRegularItem();
 	}
 
 	function arXivMetadata(item) {
@@ -271,7 +267,8 @@ var SourceDateColumns = (() => {
 	function environment() {
 		const path = PathUtils.join(Zotero.Profile.dir, 'source-date-columns-cache.json');
 		return {
-			now: () => Date.now(), sleep: ms => Zotero.Promise.delay(ms),
+			// Zotero.Promise is only a Bluebird compatibility shim since Zotero 10.
+			now: () => Date.now(), sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
 			getAuto: () => Zotero.Prefs.get('sourceDateColumns.auto') !== false,
 			setAuto: value => Zotero.Prefs.set('sourceDateColumns.auto', value),
 			read: () => IOUtils.readJSON(path),
@@ -299,7 +296,10 @@ var SourceDateColumns = (() => {
 	// Tint the whole row light blue when any of this plugin's cells in it is marked read.
 	// Selected and highlighted rows keep Zotero's own colors.
 	// A dark background needs a stronger tint for the same visual difference.
-	const READ_ROW = `#zotero-items-tree .virtualized-table .row:has(.${READ_CLASS}):not(.selected):not(.highlighted)`;
+	// The class is repeated to out-rank Zotero's striped-row rule, which in Zotero 10 is
+	// `.row.odd:not(.selected):not(.library-header-row):not(.spacer-row)`. No !important,
+	// so Zotero's own !important drop and highlight colors still win.
+	const READ_ROW = `#zotero-items-tree .virtualized-table .row.row.row.row:has(.${READ_CLASS}):not(.selected):not(.highlighted)`;
 	const READ_CSS = `${READ_ROW} {
 	background-color: color-mix(in srgb, var(--accent-blue, #4072e5) 16%, var(--material-background));
 }
@@ -311,7 +311,8 @@ var SourceDateColumns = (() => {
 
 	function readTarget(item) {
 		if (!item || typeof item !== 'object' || item.isFeedItem) return null;
-		return item.topLevelItem || item;
+		const target = item.topLevelItem || item;
+		return typeof target.hasTag === 'function' ? target : null;
 	}
 
 	function isRead(item) {

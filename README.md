@@ -1,13 +1,13 @@
-# 论文出处与日期 · 1.5.3
+# 论文出处与日期 · 1.6.0
 
-适用于 Zotero 9.0.*，无需 API 密钥。插件有两项功能：
+适用于 Zotero 9.0 和 Zotero 10，无需 API 密钥。插件有两项功能：
 
 - **出处与日期**：在条目列表中增加“出处”“日期”两列。先显示 Zotero 中已有的元数据，再依次联网查询 Crossref、arXiv、OpenReview，找到论文的正式发表出处和年月。
 - **标记已读**：可以在条目列表或 PDF 阅读器工具栏中把论文标记为已读，已读论文所在的行显示为蓝色调（浅色模式为浅蓝，深色模式为深蓝）。
 
 ## 安装
 
-1. Zotero → 工具 → 插件 → 齿轮 → 从文件安装，选择 `xpi/` 文件夹中的 `source-date-columns-1.5.3.xpi`（最新版）。已安装旧版本时直接覆盖安装即可升级。`xpi/` 里也保留了 1.0.0 以来的所有旧版本安装包。
+1. Zotero → 工具 → 插件 → 齿轮 → 从文件安装，选择 `xpi/` 文件夹中的 `source-date-columns-1.6.0.xpi`（最新版）。已安装旧版本时直接覆盖安装即可升级。`xpi/` 里也保留了 1.0.0 以来的所有旧版本安装包。
 2. 在条目列表标题上右键，勾选“出处”和“日期”（可选勾选“已读”），并拖到合适的位置，例如“创建者”后面。
 
 插件没有自动更新服务。清单中的 `https://source-date-columns.invalid/updates.json` 只是 Zotero 安装校验要求的占位地址，升级需要手动安装新的 XPI。
@@ -116,6 +116,7 @@ PDF 附件和笔记本身不查询，请在带有标题、作者或标识符的�
 - **出处一直是空的或显示 arXiv**：右键 → **查看出处查询详情**，看是否有网络错误；有错误时参考上面的 VPN 说明。没有错误时，说明各数据源都没有正式记录。
 - **标记已读后行没有变色**：确认“出处”“日期”“已读”至少有一列是显示的。
 - **阅读器里没有已读按钮**：关闭这个 PDF 再重新打开。
+- **Zotero 升级后插件被停用（显示“不兼容”）**：`manifest.json` 里的 `strict_max_version` 限定了插件支持的最高 Zotero 版本，目前是 `10.*`。Zotero 升级到下一个大版本（如 11）后，需要先确认下面“开发与验证”里列出的接口仍然可用，再放宽这个值并重新打包。
 
 ## 开发与验证
 
@@ -125,10 +126,13 @@ PDF 附件和笔记本身不查询，请在带有标题、作者或标识符的�
   - `online.js`：网络查询、匹配规则、缓存和请求队列。
 - **测试**：运行 `node tests/source-date-columns.test.js` 和 `node tests/online.test.js`。
 - **打包**：在仓库根目录运行 `zip -X -q xpi/source-date-columns-<版本号>.xpi manifest.json bootstrap.js source-date-columns.js online.js README.md LICENSE`，安装包统一放在 `xpi/` 文件夹。XPI 根目录只包含这 6 个文件。
-- **Zotero 接口**：依据本机 Zotero 9.0.6 自带的 `ItemTreeManager`、`MenuManager` 和 `Zotero.Reader.registerEventListener('renderToolbar')`。
+- **Zotero 接口**：`ItemTreeManager`、`MenuManager` 和 `Zotero.Reader.registerEventListener('renderToolbar')`。最初基于 Zotero 9.0.6 开发；1.6.0 对照 Zotero 10.0.6 的源码逐项核对过插件用到的接口、条目列表的 DOM 结构和阅读器工具栏结构。
 - **实现细节**：
   - Zotero 会把插件传入的回调函数再包一层，所以列的 `renderCell` 中拿不到 `this`，要通过 `ZoteroPane.itemsView` 按行号找到条目。
-  - 行变色用的是 CSS `:has()`，Zotero 9 基于 Firefox 140，支持这个选择器。
+  - 行变色用的是 CSS `:has()`，Zotero 9 和 10 都基于 Firefox 140，支持这个选择器。
+  - 已读行的 CSS 规则故意重复了 `.row` 这个 class 来提高 specificity：Zotero 10 的斑马纹规则是 `.row.odd:not(.selected):not(.library-header-row):not(.spacer-row)`，specificity 比 Zotero 9 的高，不提高的话斑马纹行上的已读颜色会被盖住。规则没有用 `!important`，所以 Zotero 自己带 `!important` 的拖拽和高亮颜色仍然优先。
+  - 条目列表的行不一定是文献条目：回收站里的 collection、搜索，以及 Zotero 10 的 library header、spacer 行，它们的 `ref` 没有 `isRegularItem()`。三列对这些行一律返回空，不查询、不变色、不能标记已读。
+  - 请求间隔用 `setTimeout` 实现，不依赖 `Zotero.Promise`（Zotero 10 中它只是一个 Bluebird 兼容垫片）。
   - `renderToolbar` 只提供工具栏最右侧（搜索按钮左边）的位置，已读按钮是加入后再移到标注工具组 `.toolbar .center.tools` 中的；找不到这个元素时，按钮会留在官方位置。
 - **接口文档**：[Crossref REST API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/)、[arXiv API](https://info.arxiv.org/help/api/user-manual.html)、[OpenReview API](https://docs.openreview.net/reference/api-v2)。
 
@@ -136,6 +140,7 @@ PDF 附件和笔记本身不查询，请在带有标题、作者或标识符的�
 
 | 版本 | 变化 |
 | --- | --- |
+| 1.6.0 | 兼容 Zotero 10：放宽版本限制，修复斑马纹行上已读颜色被盖住的问题，忽略非文献行 |
 | 1.5.3 | 深色模式下已读行颜色加深，更容易分辨 |
 | 1.5.2 | 已读行改为浅蓝色 |
 | 1.5.1 | 修复已读行不变色的问题 |
